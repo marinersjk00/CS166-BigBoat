@@ -269,48 +269,66 @@ public class Hotel {
             System.out.println("1. Create user");
             System.out.println("2. Log in");
             System.out.println("9. < EXIT");
-            String authorisedUser = null;
+            String authorisedUserID = null;
+            boolean userIsManager = false;
             switch (readChoice()){
                case 1: CreateUser(esql); break;
-               case 2: authorisedUser = LogIn(esql); break;
+               case 2: 
+                  authorisedUserID = LogIn(esql); 
+                  userIsManager = isManager(esql,authorisedUserID);
+                  break;
                case 9: keepon = false; break;
                default : System.out.println("Unrecognized choice!"); break;
             }//end switch
-            if (authorisedUser != null) {
-              boolean usermenu = true;
-              while(usermenu) {
-                System.out.println("MAIN MENU");
-                System.out.println("---------");
-                System.out.println("1. View Hotels within 30 units");
-                System.out.println("2. View Rooms");
-                System.out.println("3. Book a Room");
-                System.out.println("4. View recent booking history");
+            if (authorisedUserID == null) continue;
+            boolean usermenu = true;
+            while(usermenu) {
+               System.out.println("MAIN MENU");
+               System.out.println("---------");
+               System.out.println("1. View Hotels within 30 units");
+               System.out.println("2. View Rooms");
+               System.out.println("3. Book a Room");
+               System.out.println("4. View recent booking history");
 
-                //the following functionalities basically used by managers
-                System.out.println("5. Update Room Information");
-                System.out.println("6. View 5 recent Room Updates Info");
-                System.out.println("7. View booking history of the hotel");
-                System.out.println("8. View 5 regular Customers");
-                System.out.println("9. Place room repair Request to a company");
-                System.out.println("10. View room repair Requests history");
+               //the following functionalities basically used by managers
+               if(userIsManager){
+                  System.out.println("5. Update Room Information");
+                  System.out.println("6. View 5 recent Room Updates Info");
+                  System.out.println("7. View booking history of the hotel");
+                  System.out.println("8. View 5 regular Customers");
+                  System.out.println("9. Place room repair Request to a company");
+                  System.out.println("10. View room repair Requests history");
+               }
 
-                System.out.println(".........................");
-                System.out.println("20. Log out");
-                switch (readChoice()){
-                   case 1: viewHotels(esql); break;
-                   case 2: viewRooms(esql); break;
-                   case 3: bookRooms(esql); break;
-                   case 4: viewRecentBookingsfromCustomer(esql,authorisedUser); break;
-                   case 5: updateRoomInfo(esql); break;
-                   case 6: viewRecentUpdates(esql); break;
-                   case 7: viewBookingHistoryofHotel(esql); break;
-                   case 8: viewRegularCustomers(esql); break;
-                   case 9: placeRoomRepairRequests(esql); break;
-                   case 10: viewRoomRepairHistory(esql); break;
-                   case 20: usermenu = false; break;
-                   default : System.out.println("Unrecognized choice!"); break;
-                }
-              }
+               System.out.println(".........................");
+               System.out.println("20. Log out");
+               int userChoice = readChoice();
+               if(userIsManager){
+                  switch (userChoice){
+                     case 1: viewHotels(esql); break;
+                     case 2: viewRooms(esql); break;
+                     case 3: bookRooms(esql); break;
+                     case 4: viewRecentBookingsfromCustomer(esql,authorisedUserID); break;
+                     case 5: updateRoomInfo(esql); break;
+                     case 6: viewRecentUpdates(esql); break;
+                     case 7: viewBookingHistoryofHotel(esql); break;
+                     case 8: viewRegularCustomers(esql); break;
+                     case 9: placeRoomRepairRequests(esql); break;
+                     case 10: viewRoomRepairHistory(esql,authorisedUserID); break;
+                     case 20: usermenu = false; break;
+                     default : System.out.println("Unrecognized choice!"); break;
+                  }
+               }
+               else{
+                  switch (userChoice){
+                     case 1: viewHotels(esql); break;
+                     case 2: viewRooms(esql); break;
+                     case 3: bookRooms(esql); break;
+                     case 4: viewRecentBookingsfromCustomer(esql,authorisedUserID); break;
+                     case 20: usermenu = false; break;
+                     default : System.out.println("Unrecognized choice!"); break;
+                  }
+               }
             }
          }//end while
       }catch(Exception e) {
@@ -369,7 +387,7 @@ public class Hotel {
 			String query = String.format("INSERT INTO USERS (name, password, userType) VALUES ('%s','%s', '%s')", name, password, type);
          esql.executeUpdate(query);
          System.out.println ("User successfully created with userID = " + esql.getNewUserID("SELECT last_value FROM users_userID_seq"));
-         
+      
       }catch(Exception e){
          System.err.println (e.getMessage ());
       }
@@ -398,6 +416,24 @@ public class Hotel {
       }
    }//end
 
+
+   /*
+    * Check if user is a manager or not
+    * @return true if manager, false if userID does not exist or is customer
+    **/
+   public static boolean isManager(Hotel esql, String userID){
+      try{
+         String query = String.format("SELECT userType FROM USERS WHERE userID = '%s'", userID);
+         List<List<String>> res = esql.executeQueryAndReturnResult(query);
+         if(res.size() > 0 && res.get(0).size() > 0 && res.get(0).get(0) == "manager")
+            return true;
+         return false;
+      }
+      catch(Exception e){
+         System.err.println (e.getMessage ());
+         return false;
+      }
+   }//end
    // Rest of the functions definition go in here
 
    /*
@@ -502,7 +538,16 @@ public class Hotel {
    public static void viewBookingHistoryofHotel(Hotel esql) {}
    public static void viewRegularCustomers(Hotel esql) {}
    public static void placeRoomRepairRequests(Hotel esql) {}
-   public static void viewRoomRepairHistory(Hotel esql) {}
+   public static void viewRoomRepairHistory(Hotel esql, String userID) {
+      System.out.println(userID);
+      // try{
+      //    // 
+      //    String query = "SELECT userID";
+      // }
+      // catch(Exception e){
+
+      // }
+   }
 
 }//end Hotel
 

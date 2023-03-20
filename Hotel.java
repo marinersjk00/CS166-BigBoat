@@ -25,7 +25,13 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Map;
+import java.util.HashMap;
 import java.lang.Math;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
 
 /**
  * This class defines a simple embedded SQL utility class that is designed to
@@ -239,12 +245,101 @@ public class Hotel {
       }//end try
    }//end cleanup
 
+   // gui methods
+
+   public static String loginMenu(JFrame frame, Hotel esql){
+      Font largeFont = new Font("Liberation Serif", Font.PLAIN, 25);
+      Font smallFont = new Font("Liberation Serif", Font.PLAIN, 15);
+
+      JLabel userLabel, passLabel, errorLabel;
+      JTextField userField, passField;
+      JDialog dialog = new JDialog(frame,"Login", true);
+      JPanel loginPanel = new JPanel();
+      loginPanel.setLayout(new GridLayout(3,2));
+
+      userLabel = new JLabel("username:");
+      userLabel.setFont(smallFont);
+      userField = new JTextField(15);
+      loginPanel.add(userLabel);
+      loginPanel.add(userField);
+
+      passLabel = new JLabel("password:");
+      passLabel.setFont(smallFont);
+      passField = new JTextField(15);
+      loginPanel.add(passLabel);
+      loginPanel.add(passField);
+
+      JButton button = new JButton("Login");
+      errorLabel = new JLabel();
+
+      button.addActionListener(e -> {
+         String username = userField.getText();
+         String password = passField.getText();
+         String userId = LogIn(esql,username,password);
+         if(userId == null){
+            errorLabel.setText("Invalid Credentials");
+         }
+         else{
+            dialog.dispose();
+         }
+      });
+
+      loginPanel.add(errorLabel);
+      loginPanel.add(button);
+
+      dialog.add(loginPanel);
+      dialog.setSize(500,300);
+      dialog.setLocation(200,100);
+      dialog.setVisible(true);
+      
+      // continue execution here
+      return userField.getText();
+   }
+
+   public static int mainMenu(JFrame frame, Map<String,Integer> options){
+      Font largeFont = new Font("Liberation Serif", Font.PLAIN, 25);
+      Font smallFont = new Font("Liberation Serif", Font.PLAIN, 15);
+      JDialog dialog = new JDialog(frame,"Main Menu", true);
+      DefaultListModel<String> templist = new DefaultListModel<>();
+      options.entrySet()
+         .stream()
+         .forEach(e ->{ 
+            templist.addElement(e.getKey());
+         });
+
+      JPanel menuPanel = new JPanel();
+      menuPanel.setLayout(new GridLayout(1,2));
+
+      JList<String> opsList = new JList<>(templist);
+      opsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+
+      JButton button = new JButton("Submit");
+      button.addActionListener(e -> {
+         if(opsList.getSelectedValue() != null){
+            dialog.dispose();
+         }
+      });
+
+      menuPanel.add(opsList);
+      menuPanel.add(button);
+
+      dialog.add(menuPanel);
+      dialog.setSize(500,300);
+      dialog.setLocation(200,100);
+      dialog.setVisible(true);
+      return options.get(opsList.getSelectedValue());
+   }
+
    /**
     * The main execution method
     *
     * @param args the command line arguments this inclues the <mysql|pgsql> <login file>
     */
    public static void main (String[] args) {
+      // get fonts
+      // String[] fonts = GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames();
+      // for(int i = 0; i < fonts.length; ++i)
+      //    System.out.println(fonts[i]);
       if (args.length != 3) {
          System.err.println (
             "Usage: " +
@@ -253,12 +348,17 @@ public class Hotel {
             " <dbname> <port> <user>");
          return;
       }//end if
-
       Greeting();
       Hotel esql = null;
+
+      JFrame frame = new JFrame("Big Boat Lodge");
+      frame.setBounds(300,90,900,600);
+      frame.setResizable(false);
+      // frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
       try{
          // use postgres JDBC driver.
-         Class.forName ("org.postgresql.Driver").newInstance ();
+         Class.forName ("org.postgresql.Driver").newInstance();
          // instantiate the Hotel object and creates a physical
          // connection.
          String dbname = args[0];
@@ -267,19 +367,19 @@ public class Hotel {
          esql = new Hotel (dbname, dbport, user, "");
 
          boolean keepon = true;
+         Map<String,Integer> ops = new HashMap<>();
          while(keepon) {
-            // These are sample SQL statements
-            System.out.println("MAIN MENU");
-            System.out.println("---------");
-            System.out.println("1. Create user");
-            System.out.println("2. Log in");
-            System.out.println("9. < EXIT");
+            // add options to menu before sign in
+            ops.clear();
+            ops.put("Create user",1);
+            ops.put("Log in", 2);
+            ops.put("Exit", 9);
             String authorisedUserID = null;
             boolean userIsManager = false;
-            switch (readChoice()){
+            switch (mainMenu(frame,ops)){
                case 1: CreateUser(esql); break;
                case 2: 
-                  authorisedUserID = LogIn(esql); 
+                  authorisedUserID = loginMenu(frame,esql);
                   userIsManager = isManager(esql,authorisedUserID);
                   break;
                case 9: keepon = false; break;
@@ -287,27 +387,26 @@ public class Hotel {
             }//end switch
             if (authorisedUserID == null) continue;
             boolean usermenu = true;
+            System.out.println(userIsManager + " " + authorisedUserID);
             while(usermenu) {
-               System.out.println("MAIN MENU");
-               System.out.println("---------");
-               System.out.println("1. View Hotels within 30 units");
-               System.out.println("2. View Rooms");
-               System.out.println("3. Book a Room");
-               System.out.println("4. View recent booking history");
+               ops.clear();
+               ops.put("View Hotels within 30 units",1);
+               ops.put("View Rooms",2);
+               ops.put("Book a Room",3);
+               ops.put("View recent booking history",4);
 
                //the following functionalities basically used by managers
                if(userIsManager){
-                  System.out.println("5. Update Room Information");
-                  System.out.println("6. View 5 recent Room Updates Info");
-                  System.out.println("7. View booking history of the hotel");
-                  System.out.println("8. View 5 regular Customers");
-                  System.out.println("9. Place room repair Request to a company");
-                  System.out.println("10. View room repair Requests history");
+                  ops.put("Update Room Information",5);
+                  ops.put("View 5 recent Room Updates Info",6);
+                  ops.put("View booking history of the hotel",7);
+                  ops.put("View 5 regular Customers",8);
+                  ops.put("Place room repair Request to a company",9);
+                  ops.put("View room repair Requests history",10);
                }
 
-               System.out.println(".........................");
-               System.out.println("20. Log out");
-               int userChoice = readChoice();
+               ops.put("Log out",20);
+               int userChoice = mainMenu(frame,ops);
                if(userIsManager){
                   switch (userChoice){
                      case 1: viewHotels(esql); break;
@@ -344,7 +443,7 @@ public class Hotel {
             if(esql != null) {
                System.out.print("Disconnecting from database...");
                esql.cleanup ();
-               System.out.println("Done\n\nBye !");
+               System.out.println("Done\n\nBye ! (use Ctrl+C to exit)");
             }//end if
          }catch (Exception e) {
             // ignored.
@@ -403,13 +502,8 @@ public class Hotel {
     * Check log in credentials for an existing user
     * @return User login or null is the user does not exist
     **/
-   public static String LogIn(Hotel esql){
+   public static String LogIn(Hotel esql, String userID, String password){
      try{
-         System.out.print("\tEnter userID: ");
-         String userID = in.readLine();
-         System.out.print("\tEnter password: ");
-         String password = in.readLine();
-
          String query = String.format("SELECT * FROM USERS WHERE userID = '%s' AND password = '%s'", userID, password);
          int userNum = esql.executeQuery(query);
          if (userNum > 0)
@@ -429,13 +523,11 @@ public class Hotel {
    public static boolean isManager(Hotel esql, String userID){
       try{
          String query = String.format("SELECT DISTINCT userType FROM USERS WHERE userID = %s", userID);
-	String manager = "manager";
+	      String manager = "manager", admin = "admin";
          List<List<String>> res = esql.executeQueryAndReturnResult(query);
- if(res.size() > 0 && res.get(0).size() > 0 && res.get(0).get(0).contains(manager)){
-	
-		 return true;
-	}
-
+         if(res.size() > 0 && res.get(0).size() > 0 && res.get(0).get(0).contains(manager) || res.get(0).get(0).contains(admin)){
+            return true;
+         }
          return false;
       }
       catch(Exception e){
